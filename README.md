@@ -82,7 +82,7 @@ Clips live in `~/Library/Application Support/ZoomBuddy/`. Re-record any time.
   (ZoomBuddy listens to the meeting through them).
 
 ### 5. Attend a meeting
-- Enter the name(s) people call you, comma-separated (`Tamas, Thomas` catches transcription variants).
+- Enter the name(s) people call you, comma-separated (`Alex, Alexander` catches transcription variants).
 - Edit the persona text — this is how the clone answers.
 - Press **Test voice**: you should hear nothing locally, and Zoom's mic meter should move.
 - Toggle **Attend**. Join the meeting with Zoom as usual, camera and mic on.

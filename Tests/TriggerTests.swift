@@ -3,10 +3,10 @@ import XCTest
 
 final class TriggerTests: XCTestCase {
     func testMentions() {
-        XCTAssertTrue(Trigger.mentions("Tamas, Thomas", in: "So Thomas, what do you think?"))
-        XCTAssertTrue(Trigger.mentions("Tamas", in: "TAMAS?"))
+        XCTAssertTrue(Trigger.mentions("Alex, Alexander", in: "So Alexander, what do you think?"))
+        XCTAssertTrue(Trigger.mentions("Alex", in: "ALEX?"))
         XCTAssertFalse(Trigger.mentions("Tom", in: "tomorrow we ship"))
         XCTAssertFalse(Trigger.mentions("", in: "anything"))
-        XCTAssertFalse(Trigger.mentions("Tamas", in: "nobody here"))
+        XCTAssertFalse(Trigger.mentions("Alex", in: "nobody here"))
     }
 }
