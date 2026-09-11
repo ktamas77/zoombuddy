@@ -9,7 +9,8 @@ answers in the cloned voice with the cloned face. Visual and voice fidelity matt
 
 The face must be **constructed from stored recordings/images and animated in real time** — lip-synced to the
 voice, never a repeating loop. The current `ClipFace` (two looped clips) is a placeholder; follow the
-"Face roadmap" in `README.md` (motion bank + lip sync → real-time neural head → 3D Gaussian avatar).
+"Face roadmap" in `README.md` (motion bank + lip sync → real-time neural 2D head → optionally a 3D avatar).
+2D approaches are fine; pick whatever reaches fidelity in real time on Apple Silicon.
 Store all captured media under `~/Library/Application Support/ZoomBuddy/` so later phases can retrain from it.
 
 ## Rules

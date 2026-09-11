@@ -21,8 +21,9 @@ speak**, **figures out what to say**, and answers in your voice. Where Zoom expo
 speaking, participant list, chat), it should use them.
 
 Visual + voice fidelity is the core of the product, not a nice-to-have. The face is not a replayed video:
-the app records and stores videos and images of you and **constructs a lookalike** from them (a motion
-bank of real footage with lip sync first, a real-time neural or 3D head later) that is animated in real
+the app records and stores videos and images of you and **constructs a lookalike** from them (2D or 3D,
+whichever reaches fidelity: a motion bank of real footage with lip sync first, a real-time neural 2D head or a
+3D head later) that is animated in real
 time, lip-synced to the cloned voice, and never loops the same motion.
 
 ## Principles
@@ -103,7 +104,8 @@ make test    # XCTest
 
 ## Face roadmap
 
-The `Face` protocol stays the same; the implementation behind it grows in three phases:
+The `Face` protocol stays the same; the implementation behind it grows in phases. 2D is fine — a 3D head is
+only one option, not the goal:
 
 1. **Motion bank + lip sync** (next). Record many clips (listening, nodding, reacting, talking), cut them into
    short snippets, pick them stochastically with crossfades so idle motion never repeats. While speaking, run
