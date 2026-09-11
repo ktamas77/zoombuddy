@@ -2,6 +2,16 @@
 
 Your digital clone for Zoom meetings. macOS only, open source (MIT), local by default.
 
+## What it is
+
+ZoomBuddy is a small Mac app that sits in a Zoom meeting *as you*. It shows a video of you, listens to what
+people say, and when someone addresses you by name it thinks up a short answer and says it in your own cloned
+voice. Zoom sees it as just another camera and microphone.
+
+Everything in the current version runs on your Mac with no accounts, no API keys and no data leaving the
+machine: Apple's Personal Voice clones your voice, Apple's on-device speech recognizer transcribes the meeting,
+and Apple's on-device foundation model decides what to say. The face is you, recorded from your webcam.
+
 ## Goal
 
 Clone your **face** and **voice** from a webcam, photos, video and audio recordings, then let the clone
@@ -34,23 +44,59 @@ Visual + voice fidelity is the core of the product, not a nice-to-have.
 
 Flow: `Ears → Trigger → Brain → Voice → Speaker`, with `Face` switched to *talking* while audio plays.
 
-## Setup (once)
+## Requirements
 
-1. macOS 26+, Apple Silicon, Xcode 26. Enable **Apple Intelligence** (System Settings › Apple Intelligence & Siri).
-2. **Personal Voice**: System Settings › Accessibility › Personal Voice › Create (≈15 min of reading prompts, on-device).
-3. `brew install blackhole-2ch` (free virtual audio device).
-4. OBS: add a **Window Capture** source of the "ZoomBuddy Face" window, then **Start Virtual Camera**.
-5. Zoom: Video → *OBS Virtual Camera*; Audio → Microphone: *BlackHole 2ch*; Speaker: your real speakers.
+- Apple Silicon Mac on **macOS 26** or later, with **Apple Intelligence** enabled
+  (System Settings › Apple Intelligence & Siri).
+- **Xcode 26** (to build; `xcode-select --install` is not enough).
+- **OBS Studio** (free) — provides the virtual camera. `brew install --cask obs`
+- **BlackHole 2ch** (free) — provides the virtual microphone. `brew install blackhole-2ch`
+- The regular **Zoom** desktop client on the same Mac.
 
-## Run
+## How to use
+
+### 1. Clone your voice (once, ~15 minutes)
+System Settings › Accessibility › **Personal Voice** › *Create a Personal Voice*. Read the prompts in a quiet
+room. macOS builds the voice on-device (it can take a while in the background; the Mac must be plugged in).
+
+### 2. Build and start the app
+```sh
+git clone https://github.com/ktamas77/zoombuddy && cd zoombuddy
+make run          # builds build/ZoomBuddy.app and opens it
+```
+Grant camera and microphone access when asked. The control window shows the status of the voice, the
+output device and the on-device model; fix anything marked ⚠️ before continuing.
+
+### 3. Clone your face (once, ~1 minute)
+In the app:
+- **Record idle 20s** — sit as you would while listening: small movements, nods, the occasional glance.
+- **Record talking 20s** — talk (anything), gesture as you normally do.
+- **Open Face window** — a 1280×720 window that loops the current clip. Leave it open.
+
+Clips live in `~/Library/Application Support/ZoomBuddy/`. Re-record any time.
+
+### 4. Wire it into Zoom (once)
+- OBS: add a **Window Capture** source pointing at the "ZoomBuddy Face" window, then **Start Virtual Camera**.
+- Zoom › Settings › Video: camera = **OBS Virtual Camera**.
+- Zoom › Settings › Audio: microphone = **BlackHole 2ch**; speaker = your real speakers
+  (ZoomBuddy listens to the meeting through them).
+
+### 5. Attend a meeting
+- Enter the name(s) people call you, comma-separated (`Tamas, Thomas` catches transcription variants).
+- Edit the persona text — this is how the clone answers.
+- Press **Test voice**: you should hear nothing locally, and Zoom's mic meter should move.
+- Toggle **Attend**. Join the meeting with Zoom as usual, camera and mic on.
+
+The transcript scrolls in the control window. When someone says your name, the status goes
+*Listening → Thinking → Speaking*, the face switches to the talking clip, and the answer plays into Zoom.
+Toggle **Attend** off (or just unmute yourself) to take over.
+
+## Development
 
 ```sh
-make run        # builds build/ZoomBuddy.app and opens it
-make test
+make build   # release build + ad-hoc signed .app in build/
+make test    # XCTest
 ```
-
-In the app: enter your name(s), record the *idle* and *talking* clips, open the Face window, press **Test voice**,
-then toggle **Attend**. Join the Zoom meeting with the regular Zoom client on the same Mac.
 
 ## Roadmap
 
