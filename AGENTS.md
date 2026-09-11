@@ -8,8 +8,8 @@ virtual camera + virtual mic selectable in Zoom, listens (STT), decides when to 
 answers in the cloned voice with the cloned face. Visual and voice fidelity matter most.
 
 The face must be **constructed from stored recordings/images and animated in real time** — lip-synced to the
-voice, never a repeating loop. The current `ClipFace` (two looped clips) is a placeholder; follow the
-"Face roadmap" in `README.md` (motion bank + lip sync → real-time neural 2D head → optionally a 3D avatar).
+voice, never a repeating loop. `BankFace` (motion bank of takes + random crossfaded snippets) plus the
+lip-sync sidecar is phase 1; follow the "Face roadmap" in `README.md` (motion bank + lip sync → real-time neural 2D head → optionally a 3D avatar).
 2D approaches are fine; pick whatever reaches fidelity in real time on Apple Silicon.
 Store all captured media under `~/Library/Application Support/ZoomBuddy/` so later phases can retrain from it.
 
@@ -29,12 +29,17 @@ Store all captured media under `~/Library/Application Support/ZoomBuddy/` so lat
    has Marketplace credentials; degrade gracefully to audio-only otherwise.
 6. **Tests.** One runnable check per non-trivial piece of logic (`Tests/`). `make test` must pass.
 7. **Don't touch the user's clone data** in `~/Library/Application Support/ZoomBuddy/` except through the app.
+8. **Never vendor Wav2Lip (code or weights) into this repo** — non-commercial license. `sidecar/setup.sh`
+   fetches it into gitignored `sidecar/vendor` + `sidecar/weights`. Any lip-sync engine must honour the same
+   HTTP contract (`GET /health`, `POST /lipsync {audio, video, start} → {video, seconds}`) so the Swift side
+   never changes.
 
 ## Build / run
 ```sh
 make build   # swift build -c release + ad-hoc signed build/ZoomBuddy.app
 make run
 make test
+make sidecar-setup && make sidecar   # lip-sync sidecar (Python, uv)
 ```
 Stack: Swift 6.3 (Swift 5 language mode), SwiftUI, AVFoundation, Speech (SpeechAnalyzer), FoundationModels,
 CoreAudio. SwiftPM only — no Xcode project; `Info.plist` + `Makefile` produce the bundle.
@@ -43,6 +48,9 @@ CoreAudio. SwiftPM only — no Xcode project; `Info.plist` + `Makefile` produce 
 - `Sources/ZoomBuddy/App.swift` — SwiftUI: control window + 1280×720 Face window (captured by OBS)
 - `Sources/ZoomBuddy/Components.swift` — protocols + `Speaker` (PCM → named CoreAudio output device)
 - `Sources/ZoomBuddy/Apple.swift` — `PersonalVoice`, `AppleEars`, `AppleBrain` (all on-device)
-- `Sources/ZoomBuddy/Face.swift` — `ClipFace`: records/loops idle + talking webcam clips
+- `Sources/ZoomBuddy/Face.swift` — `BankFace`: records takes into clips/<kind>/, plays random crossfaded snippets,
+  plays a lip-synced render when given one
 - `Sources/ZoomBuddy/Buddy.swift` — orchestrator + `Trigger` (name-mention detection)
+- `Sources/ZoomBuddy/Components.swift` also holds `LipSync` (HTTP client for the sidecar)
+- `sidecar/lipsync.py` — Wav2Lip lip-sync server (MPS/CPU); `sidecar/setup.sh` fetches vendor + weights
 - `Tests/` — XCTest

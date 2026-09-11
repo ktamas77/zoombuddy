@@ -40,7 +40,7 @@ time, lip-synced to the cloned voice, and never loops the same motion.
 
 | Component | v1 (local) | Swap candidates |
 |---|---|---|
-| Face | **Placeholder:** two webcam clips (idle / talking) looped in a 1280×720 window; OBS captures it → **OBS Virtual Camera** | See "Face roadmap" below |
+| Face | **Motion bank**: many webcam takes per state, played as random 2.5–6 s snippets with crossfades (never repeats) in a 1280×720 window; OBS captures it → **OBS Virtual Camera**. While speaking, the **lip-sync sidecar** (Wav2Lip on Apple Silicon GPU, ≈0.4× real time) re-renders the mouth of a talking snippet to match the voice | See "Face roadmap" below |
 | Voice | macOS **Personal Voice** (on-device clone) → PCM → **BlackHole 2ch** (Zoom's mic) | ElevenLabs / Vapi / F5-TTS / Chatterbox; own virtual audio driver |
 | Ears | On-device **SpeechAnalyzer** listening on the default mic (hears Zoom through the speakers) | whisper.cpp; Zoom SDK raw audio per participant |
 | Brain | Apple **on-device Foundation Model**, persona prompt, last 8 utterances as context | Ollama / MLX local LLM; Claude / OpenAI; turn-taking model instead of name trigger |
@@ -56,6 +56,9 @@ Flow: `Ears → Trigger → Brain → Voice → Speaker`, with `Face` switched t
 - **OBS Studio** (free) — provides the virtual camera. `brew install --cask obs`
 - **BlackHole 2ch** (free) — provides the virtual microphone. `brew install blackhole-2ch`
 - The regular **Zoom** desktop client on the same Mac.
+- For lip sync: **uv** (`brew install uv`) and **ffmpeg** (`brew install ffmpeg`). The sidecar downloads
+  Wav2Lip and its weights at setup; they are licensed for personal / research / non-commercial use only and
+  are not part of this repository.
 
 ## How to use
 
@@ -71,13 +74,23 @@ make run          # builds build/ZoomBuddy.app and opens it
 Grant camera and microphone access when asked. The control window shows the status of the voice, the
 output device and the on-device model; fix anything marked ⚠️ before continuing.
 
-### 3. Clone your face (once, ~1 minute)
-In the app:
-- **Record idle 20s** — sit as you would while listening: small movements, nods, the occasional glance.
-- **Record talking 20s** — talk (anything), gesture as you normally do.
-- **Open Face window** — a 1280×720 window that loops the current clip. Leave it open.
+### 3. Clone your face (a few minutes)
+In the app, record several takes of each kind — more takes means less visible repetition:
+- **+ idle take** — sit as you would while listening: small movements, nods, the occasional glance, a smile.
+- **+ talking take** — talk (anything), gesture as you normally do. Keep your face roughly centred.
+- **Open Face window** — a 1280×720 window playing random snippets from the bank. Leave it open.
 
-Clips live in `~/Library/Application Support/ZoomBuddy/`. Re-record any time.
+Takes live in `~/Library/Application Support/ZoomBuddy/clips/{idle,talking}/`. Delete bad ones there
+(**Clips…** opens the folder); the app picks up changes on the next recording or restart.
+
+### 3b. Lip sync (optional, recommended)
+```sh
+make sidecar-setup   # once: Python env, Wav2Lip source + weights (~500 MB)
+make sidecar         # keep running in a terminal while ZoomBuddy is in use
+```
+With the sidecar up, every answer is rendered onto a talking snippet with the mouth matched to the audio
+before it plays (≈0.4× real time on an M1 Max, so a 6 s answer starts ≈2.5 s after the text is ready).
+Without it, raw talking snippets play instead.
 
 ### 4. Wire it into Zoom (once)
 - OBS: add a **Window Capture** source pointing at the "ZoomBuddy Face" window, then **Start Virtual Camera**.
@@ -107,10 +120,12 @@ make test    # XCTest
 The `Face` protocol stays the same; the implementation behind it grows in phases. 2D is fine — a 3D head is
 only one option, not the goal:
 
-1. **Motion bank + lip sync** (next). Record many clips (listening, nodding, reacting, talking), cut them into
-   short snippets, pick them stochastically with crossfades so idle motion never repeats. While speaking, run
-   an audio-driven lip-sync model (MuseTalk, or Wav2Lip via CoreML) on the current snippet. TTS audio exists
-   before playback starts, so the mouth can be rendered ahead of time. Real pixels of you = highest fidelity.
+1. **Motion bank + lip sync** (done, v0.2). Many takes per state, random snippets with crossfades so idle
+   motion never repeats; while speaking, Wav2Lip (`sidecar/lipsync.py`, HTTP on 127.0.0.1:8765) re-renders the
+   mouth of a talking snippet to the TTS audio before playback. Real pixels of you = highest fidelity.
+   Next within this phase: a sharper lip-sync model behind the same HTTP contract (MuseTalk / LatentSync once
+   they run fast enough on Apple Silicon), chunked rendering so long answers start sooner, snippet boundaries
+   chosen by head-pose similarity.
 2. **Real-time neural head** from a reference frame + audio/motion (LivePortrait, Ditto). Limited by Apple
    Silicon throughput today; useful as a lighter alternative for a small Zoom tile.
 3. **Constructed 3D head.** Train a Gaussian-splatting avatar (GaussianAvatars / FlashAvatar) from the stored
@@ -121,7 +136,8 @@ A hosted talking-head API (HeyGen, Tavus) can back the same protocol as a fallba
 
 ## Roadmap
 
-- [ ] Face phase 1: motion bank + lip sync (see above)
+- [x] Face phase 1: motion bank + lip sync (v0.2)
+- [ ] Sharper lip sync model / chunked rendering / pose-matched snippet cuts
 - [ ] Voice engine options: ElevenLabs / Vapi / open-source TTS behind `Voice`
 - [ ] Zoom integration for granular signals: **Zoom Apps SDK** (`onActiveSpeakerChange`, participants, running
       inside the Zoom client) or the **Zoom Meeting SDK** (clone joins as its own participant, gets per-user raw

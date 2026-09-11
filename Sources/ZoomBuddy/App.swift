@@ -21,7 +21,7 @@ struct ZoomBuddyApp: App {
 }
 
 struct FaceView: View {
-    @EnvironmentObject var face: ClipFace
+    @EnvironmentObject var face: BankFace
     var body: some View {
         LayerView(layer: face.layer)
             .frame(width: 1280, height: 720)
@@ -44,7 +44,7 @@ struct LayerView: NSViewRepresentable {
 
 struct ControlView: View {
     @EnvironmentObject var buddy: Buddy
-    @EnvironmentObject var face: ClipFace
+    @EnvironmentObject var face: BankFace
     @Environment(\.openWindow) var openWindow
 
     var body: some View {
@@ -53,13 +53,16 @@ struct ControlView: View {
                 TextField("Name(s) people call you, comma-separated", text: $buddy.name)
                 TextEditor(text: $buddy.persona).frame(height: 80)
             }
-            Section("Face  (clips loop in the Face window → capture it in OBS → Virtual Camera)") {
+            Section("Face  (motion bank plays in the Face window → capture it in OBS → Virtual Camera)") {
                 HStack {
-                    Button("Record idle 20s") { face.record(.idle) }
-                    Button("Record talking 20s") { face.record(.talking) }
+                    Button("+ idle take (20s)") { face.record("idle") }
+                    Button("+ talking take (20s)") { face.record("talking") }
                     Button("Open Face window") { openWindow(id: "face") }
+                    Button("Clips…") { face.revealClips() }
                 }.disabled(face.isRecording)
                 Text(face.status).font(.caption).foregroundStyle(.secondary)
+                Toggle("Lip sync while speaking (needs sidecar)", isOn: $buddy.lipSync)
+                Text(buddy.lipSyncStatus).font(.caption).foregroundStyle(.secondary)
             }
             Section("Voice / Brain") {
                 TextField("Output device (select this as mic in Zoom)", text: $buddy.outputDevice)

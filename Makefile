@@ -14,3 +14,11 @@ test:
 	swift test
 
 .PHONY: build run test
+
+sidecar-setup:
+	sidecar/setup.sh
+
+sidecar:
+	cd sidecar && uv run python lipsync.py
+
+.PHONY: sidecar sidecar-setup

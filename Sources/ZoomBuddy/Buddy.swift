@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AVFoundation
 
 enum Trigger {
     /// True if any comma-separated alias in `names` appears as a whole word in `text`.
@@ -28,11 +29,15 @@ final class Buddy: ObservableObject {
     @Published var attending = false { didSet { attending ? startEars() : stopEars() } }
     @Published var state = State.off
     @Published var transcript: [String] = []
+    @Published var lipSync = UserDefaults.standard.object(forKey: "lipSync") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(lipSync, forKey: "lipSync") }
+    }
+    @Published var lipSyncStatus = "Lip sync: checking…"
     @Published var voiceStatus = "Voice: checking…"
     @Published var brainStatus = AppleBrain.status
 
     // Components — swap here.
-    let face = ClipFace()
+    let face = BankFace()
     private let personalVoice = PersonalVoice()
     private var voice: Voice { personalVoice }
     private let ears: Ears = AppleEars()
@@ -45,6 +50,14 @@ final class Buddy: ObservableObject {
     init() {
         (ears as? AppleEars)?.onStatus = { [weak self] s in Task { @MainActor in self?.brainStatus = s } }
         Task { await personalVoice.setup(); refreshVoiceStatus() }
+        Task { await refreshLipSync() }
+    }
+
+    @discardableResult
+    func refreshLipSync() async -> Bool {
+        let up = await LipSync.available()
+        lipSyncStatus = up ? "Lip sync: sidecar ready" : "Lip sync: sidecar not running (make sidecar-setup && make sidecar) — using raw talking clips"
+        return up
     }
 
     private func refreshVoiceStatus() {
@@ -53,10 +66,20 @@ final class Buddy: ObservableObject {
 
     func say(_ text: String) {
         state = .speaking
-        face.show(.talking)
         Task {
-            do { try await speaker.play(voice.synthesize(text)) }
-            catch { voiceStatus = "Voice error: \(error.localizedDescription)" }
+            do {
+                var buffers: [AVAudioPCMBuffer] = []
+                for try await b in voice.synthesize(text) { buffers.append(b) }
+                let seconds = buffers.reduce(0.0) { $0 + Double($1.frameLength) / $1.format.sampleRate }
+                var video: URL?
+                // ponytail: whole utterance is rendered before playback starts (≈1–3 s). Upgrade: chunked streaming render.
+                if lipSync, await refreshLipSync(), let clip = face.randomSnippet("talking", minDuration: seconds) {
+                    do { video = try await LipSync.render(audio: LipSync.writeWAV(buffers), video: clip.url, start: clip.start) }
+                    catch { lipSyncStatus = "Lip sync: \(error.localizedDescription)" }
+                }
+                face.show(.talking(video: video))
+                try await speaker.play(buffers)
+            } catch { voiceStatus = "Voice error: \(error.localizedDescription)" }
             face.show(.idle)
             state = attending ? .listening : .off
         }
