@@ -20,7 +20,10 @@ Zoom, animates like you, **listens to the meeting** (speech-to-text), **understa
 speak**, **figures out what to say**, and answers in your voice. Where Zoom exposes richer signals (who is
 speaking, participant list, chat), it should use them.
 
-Visual + voice fidelity is the core of the product, not a nice-to-have.
+Visual + voice fidelity is the core of the product, not a nice-to-have. The face is not a replayed video:
+the app records and stores videos and images of you and **constructs a lookalike** from them (a motion
+bank of real footage with lip sync first, a real-time neural or 3D head later) that is animated in real
+time, lip-synced to the cloned voice, and never loops the same motion.
 
 ## Principles
 
@@ -36,7 +39,7 @@ Visual + voice fidelity is the core of the product, not a nice-to-have.
 
 | Component | v1 (local) | Swap candidates |
 |---|---|---|
-| Face | Two webcam clips (idle / talking) looped in a 1280×720 window; OBS captures it → **OBS Virtual Camera** | Lip-synced talking head (MuseTalk, LivePortrait, Ditto) fed by TTS audio; HeyGen / Tavus; native CMIO camera extension so Zoom lists "ZoomBuddy Camera" |
+| Face | **Placeholder:** two webcam clips (idle / talking) looped in a 1280×720 window; OBS captures it → **OBS Virtual Camera** | See "Face roadmap" below |
 | Voice | macOS **Personal Voice** (on-device clone) → PCM → **BlackHole 2ch** (Zoom's mic) | ElevenLabs / Vapi / F5-TTS / Chatterbox; own virtual audio driver |
 | Ears | On-device **SpeechAnalyzer** listening on the default mic (hears Zoom through the speakers) | whisper.cpp; Zoom SDK raw audio per participant |
 | Brain | Apple **on-device Foundation Model**, persona prompt, last 8 utterances as context | Ollama / MLX local LLM; Claude / OpenAI; turn-taking model instead of name trigger |
@@ -98,9 +101,25 @@ make build   # release build + ad-hoc signed .app in build/
 make test    # XCTest
 ```
 
+## Face roadmap
+
+The `Face` protocol stays the same; the implementation behind it grows in three phases:
+
+1. **Motion bank + lip sync** (next). Record many clips (listening, nodding, reacting, talking), cut them into
+   short snippets, pick them stochastically with crossfades so idle motion never repeats. While speaking, run
+   an audio-driven lip-sync model (MuseTalk, or Wav2Lip via CoreML) on the current snippet. TTS audio exists
+   before playback starts, so the mouth can be rendered ahead of time. Real pixels of you = highest fidelity.
+2. **Real-time neural head** from a reference frame + audio/motion (LivePortrait, Ditto). Limited by Apple
+   Silicon throughput today; useful as a lighter alternative for a small Zoom tile.
+3. **Constructed 3D head.** Train a Gaussian-splatting avatar (GaussianAvatars / FlashAvatar) from the stored
+   footage, drive it with audio-to-expression (e.g. Audio2Face) plus procedural blinks and head motion, render
+   with Metal. Training needs a CUDA GPU once; inference runs locally.
+
+A hosted talking-head API (HeyGen, Tavus) can back the same protocol as a fallback if local quality is not enough.
+
 ## Roadmap
 
-- [ ] Real lip-sync talking head from the TTS audio (visual fidelity)
+- [ ] Face phase 1: motion bank + lip sync (see above)
 - [ ] Voice engine options: ElevenLabs / Vapi / open-source TTS behind `Voice`
 - [ ] Zoom integration for granular signals: **Zoom Apps SDK** (`onActiveSpeakerChange`, participants, running
       inside the Zoom client) or the **Zoom Meeting SDK** (clone joins as its own participant, gets per-user raw

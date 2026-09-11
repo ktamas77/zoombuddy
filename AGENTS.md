@@ -7,6 +7,11 @@ A macOS-only, open-source (MIT) app that clones the user's face and voice and at
 virtual camera + virtual mic selectable in Zoom, listens (STT), decides when to speak, decides what to say,
 answers in the cloned voice with the cloned face. Visual and voice fidelity matter most.
 
+The face must be **constructed from stored recordings/images and animated in real time** — lip-synced to the
+voice, never a repeating loop. The current `ClipFace` (two looped clips) is a placeholder; follow the
+"Face roadmap" in `README.md` (motion bank + lip sync → real-time neural head → 3D Gaussian avatar).
+Store all captured media under `~/Library/Application Support/ZoomBuddy/` so later phases can retrain from it.
+
 ## Rules
 1. **Local / open source first.** Apple on-device frameworks or OSS models by default. A hosted service
    (Vapi, ElevenLabs, HeyGen, Tavus, Claude, …) is fine when it is clearly faster, simpler or better — but only
