@@ -41,7 +41,7 @@ time, lip-synced to the cloned voice, and never loops the same motion.
 | Component | v1 (local) | Swap candidates |
 |---|---|---|
 | Face | **Motion bank**: many webcam takes per state, played as random 2.5–6 s snippets with crossfades (never repeats) in a 1280×720 window; OBS captures it → **OBS Virtual Camera**. While speaking, the **lip-sync sidecar** (Wav2Lip on Apple Silicon GPU, ≈0.4× real time) re-renders the mouth of a talking snippet to match the voice | See "Face roadmap" below |
-| Voice | macOS **Personal Voice** (on-device clone) → PCM → **BlackHole 2ch** (Zoom's mic) | ElevenLabs / Vapi / F5-TTS / Chatterbox; own virtual audio driver |
+| Voice | macOS **Personal Voice** (on-device clone, zero setup) **or** [**VoiceStudio**](https://github.com/debpalash/VoiceStudio) (local app, zero-shot clone from a 3–10 s clip, 16 engines) → PCM → **BlackHole 2ch** (Zoom's mic) | ElevenLabs / Vapi / F5-TTS / Chatterbox; own virtual audio driver |
 | Ears | On-device **SpeechAnalyzer** listening on the default mic (hears Zoom through the speakers) | whisper.cpp; Zoom SDK raw audio per participant |
 | Brain | Apple **on-device Foundation Model**, persona prompt, last 8 utterances as context | Ollama / MLX local LLM; Claude / OpenAI; turn-taking model instead of name trigger |
 | When to speak | Someone says one of your names (comma-separated aliases) | Brain judges every segment; Zoom active-speaker + "addressed to me" classifier |
@@ -65,6 +65,16 @@ Flow: `Ears → Trigger → Brain → Voice → Speaker`, with `Face` switched t
 ### 1. Clone your voice (once, ~15 minutes)
 System Settings › Accessibility › **Personal Voice** › *Create a Personal Voice*. Read the prompts in a quiet
 room. macOS builds the voice on-device (it can take a while in the background; the Mac must be plugged in).
+
+### 1b. Better clone with VoiceStudio (optional)
+[VoiceStudio](https://github.com/debpalash/VoiceStudio) is a separate local app (AGPL, not bundled) that clones a
+voice from a **3–10 second** clip with a much closer likeness than Personal Voice. Install it, open
+**Voice › From audio**, create a profile from a clean recording of you, and note its profile id. In ZoomBuddy pick
+**VoiceStudio** as the voice engine and paste the id. ZoomBuddy talks to VoiceStudio's OpenAI-compatible API on
+`127.0.0.1:3900`; keep VoiceStudio running while attending. Measured on an M1 Max with the
+default OmniVoice engine: a 2 s sentence takes ≈3.6 s, an 8 s answer ≈4.7 s (8 unmasking steps; VoiceStudio's
+default 16 roughly doubles that). The very first call after install downloads ≈2.4 GB of weights. Personal
+Voice starts speaking almost instantly, so it stays the default.
 
 ### 2. Build and start the app
 ```sh
@@ -138,7 +148,8 @@ A hosted talking-head API (HeyGen, Tavus) can back the same protocol as a fallba
 
 - [x] Face phase 1: motion bank + lip sync (v0.2)
 - [ ] Sharper lip sync model / chunked rendering / pose-matched snippet cuts
-- [ ] Voice engine options: ElevenLabs / Vapi / open-source TTS behind `Voice`
+- [x] VoiceStudio as a second voice engine behind `Voice`
+- [ ] More voice engines: ElevenLabs / Vapi / streaming PCM from VoiceStudio for lower first-audio latency
 - [ ] Zoom integration for granular signals: **Zoom Apps SDK** (`onActiveSpeakerChange`, participants, running
       inside the Zoom client) or the **Zoom Meeting SDK** (clone joins as its own participant, gets per-user raw
       audio, sends raw video/audio → no OBS/BlackHole needed). Both need a Zoom Marketplace app on your account.

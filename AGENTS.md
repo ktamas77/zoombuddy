@@ -48,6 +48,8 @@ CoreAudio. SwiftPM only — no Xcode project; `Info.plist` + `Makefile` produce 
 - `Sources/ZoomBuddy/App.swift` — SwiftUI: control window + 1280×720 Face window (captured by OBS)
 - `Sources/ZoomBuddy/Components.swift` — protocols + `Speaker` (PCM → named CoreAudio output device)
 - `Sources/ZoomBuddy/Apple.swift` — `PersonalVoice`, `AppleEars`, `AppleBrain` (all on-device)
+- `Sources/ZoomBuddy/VoiceStudio.swift` — `VoiceStudioVoice`: HTTP client for a locally running VoiceStudio
+  (`POST /v1/audio/speech`, `GET /v1/audio/voices`). AGPL app — never vendor or link it; HTTP only.
 - `Sources/ZoomBuddy/Face.swift` — `BankFace`: records takes into clips/<kind>/, plays random crossfaded snippets,
   plays a lip-synced render when given one
 - `Sources/ZoomBuddy/Buddy.swift` — orchestrator + `Trigger` (name-mention detection)

@@ -24,11 +24,17 @@ final class Buddy: ObservableObject {
         didSet { UserDefaults.standard.set(persona, forKey: "persona") }
     }
     @Published var outputDevice = UserDefaults.standard.string(forKey: "outputDevice") ?? "BlackHole 2ch" {
-        didSet { UserDefaults.standard.set(outputDevice, forKey: "outputDevice"); speaker = Speaker(outputDevice: outputDevice); refreshVoiceStatus() }
+        didSet { UserDefaults.standard.set(outputDevice, forKey: "outputDevice"); speaker = Speaker(outputDevice: outputDevice); Task { await refreshVoiceStatus() } }
     }
     @Published var attending = false { didSet { attending ? startEars() : stopEars() } }
     @Published var state = State.off
     @Published var transcript: [String] = []
+    @Published var voiceEngine = UserDefaults.standard.string(forKey: "voiceEngine") ?? "personal" {
+        didSet { UserDefaults.standard.set(voiceEngine, forKey: "voiceEngine"); Task { await refreshVoiceStatus() } }
+    }
+    @Published var voiceStudioProfile = UserDefaults.standard.string(forKey: "voiceStudioProfile") ?? "default" {
+        didSet { UserDefaults.standard.set(voiceStudioProfile, forKey: "voiceStudioProfile"); voiceStudio.profile = voiceStudioProfile }
+    }
     @Published var lipSync = UserDefaults.standard.object(forKey: "lipSync") as? Bool ?? true {
         didSet { UserDefaults.standard.set(lipSync, forKey: "lipSync") }
     }
@@ -39,7 +45,8 @@ final class Buddy: ObservableObject {
     // Components — swap here.
     let face = BankFace()
     private let personalVoice = PersonalVoice()
-    private var voice: Voice { personalVoice }
+    private let voiceStudio = VoiceStudioVoice()
+    private var voice: Voice { voiceEngine == "voicestudio" ? voiceStudio : personalVoice }
     private let ears: Ears = AppleEars()
     private var brain: Brain { AppleBrain(name: firstName, persona: persona) }
     private var speaker = Speaker(outputDevice: UserDefaults.standard.string(forKey: "outputDevice") ?? "BlackHole 2ch")
@@ -49,7 +56,8 @@ final class Buddy: ObservableObject {
 
     init() {
         (ears as? AppleEars)?.onStatus = { [weak self] s in Task { @MainActor in self?.brainStatus = s } }
-        Task { await personalVoice.setup(); refreshVoiceStatus() }
+        voiceStudio.profile = voiceStudioProfile
+        Task { await personalVoice.setup(); await refreshVoiceStatus() }
         Task { await refreshLipSync() }
     }
 
@@ -60,8 +68,22 @@ final class Buddy: ObservableObject {
         return up
     }
 
-    private func refreshVoiceStatus() {
-        voiceStatus = personalVoice.status + (speaker.deviceFound ? "" : "  ⚠️ “\(outputDevice)” not found, using default output (brew install blackhole-2ch)")
+    func refreshVoiceStatus() async {
+        var s: String
+        if voiceEngine == "voicestudio" {
+            if await voiceStudio.available() {
+                let profiles = (try? await voiceStudio.profiles()) ?? []
+                let known = profiles.contains { $0.id == voiceStudioProfile } || voiceStudioProfile == "default"
+                s = "Voice: VoiceStudio" + (known ? "" : " ⚠️ profile “\(voiceStudioProfile)” not found")
+                s += profiles.isEmpty ? " — no cloned profiles yet; create one in VoiceStudio (From audio)"
+                                      : " — profiles: " + profiles.map { "\($0.name) [\($0.id)]" }.joined(separator: ", ")
+            } else {
+                s = "Voice: VoiceStudio not running on 127.0.0.1:3900 — start it, or switch to Personal Voice"
+            }
+        } else {
+            s = personalVoice.status
+        }
+        voiceStatus = s + (speaker.deviceFound ? "" : "  ⚠️ “\(outputDevice)” not found, using default output (brew install blackhole-2ch)")
     }
 
     func say(_ text: String) {

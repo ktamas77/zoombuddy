@@ -65,6 +65,13 @@ struct ControlView: View {
                 Text(buddy.lipSyncStatus).font(.caption).foregroundStyle(.secondary)
             }
             Section("Voice / Brain") {
+                Picker("Voice engine", selection: $buddy.voiceEngine) {
+                    Text("Personal Voice (Apple)").tag("personal")
+                    Text("VoiceStudio (local app)").tag("voicestudio")
+                }.pickerStyle(.segmented)
+                if buddy.voiceEngine == "voicestudio" {
+                    TextField("VoiceStudio profile id", text: $buddy.voiceStudioProfile)
+                }
                 TextField("Output device (select this as mic in Zoom)", text: $buddy.outputDevice)
                 Text(buddy.voiceStatus).font(.caption).foregroundStyle(.secondary)
                 Text(buddy.brainStatus).font(.caption).foregroundStyle(.secondary)
